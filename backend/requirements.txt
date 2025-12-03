@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+qdrant-client
+elasticsearch
+fastembed
+langchain
+langchain-community
+langchain-text-splitters
+langchain-unstructured
+unstructured[all-docs]
+pypdf
+python-magic
+pandas

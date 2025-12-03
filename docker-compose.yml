@@ -1,0 +1,50 @@
+services:
+  # --- 1. Qdrant (Ext: 4633) ---
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant_db
+    ports:
+      - "4633:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+
+  # --- 2. Elastic (Ext: 4920) ---
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
+    container_name: elastic_db
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "4920:9200"
+    volumes:
+      - ./es_data:/usr/share/elasticsearch/data
+
+  # --- 3. Backend (Ext: 4800) ---
+  backend:
+    build: ./backend
+    container_name: hybrid_backend
+    ports:
+      - "4800:8000"
+    depends_on:
+      - qdrant
+      - elasticsearch
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - ELASTIC_HOST=elasticsearch
+      - ELASTIC_PORT=9200
+    volumes:
+      - ./models_cache:/app/models_cache
+
+  # --- 4. Frontend (Ext: 4300) ---
+  frontend:
+    build: ./frontend
+    container_name: hybrid_frontend
+    ports:
+      - "4300:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
