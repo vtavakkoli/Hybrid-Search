@@ -21,7 +21,7 @@ services:
 
   queryweave:
     build:
-      context: https://github.com/vtavakkoli/QueryWeave.git#feature/queryweave-engine-v1
+      context: https://github.com/vtavakkoli/QueryWeave.git#main
     container_name: queryweave_engine
     ports:
       - "4777:7777"
