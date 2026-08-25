@@ -1,337 +1,103 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-// EXTERNAL PORT 4800
 const API_URL = "http://localhost:4800";
-
-// --- STYLES ---
-const colors = {
-  bg: "#f4f6f8",
-  white: "#ffffff",
-  primary: "#2196f3",
-  qdrant: "#e91e63", // Pink
-  elastic: "#00bfb3", // Teal
-  text: "#333",
-  subText: "#666",
-  border: "#e0e0e0"
+const palette = {
+  bg: "#f5f7fb", ink: "#172033", muted: "#667085", blue: "#2563eb",
+  qdrant: "#e91e63", elastic: "#00a99d", queryweave: "#6d4aff", border: "#e5e7eb",
 };
 
-const styles = {
-  container: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "40px 20px",
-    fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    color: colors.text,
-    background: colors.bg,
-    minHeight: "100vh"
-  },
-  header: { textAlign: "center", marginBottom: "40px" },
-  title: { fontSize: "2.5rem", fontWeight: "700", marginBottom: "10px", color: "#2c3e50" },
-  subtitle: { fontSize: "1.1rem", color: colors.subText },
-  tabContainer: { display: "flex", justifyContent: "center", marginBottom: "30px", gap: "20px" },
-  tab: (isActive) => ({
-    padding: "12px 30px",
-    fontSize: "1rem",
-    fontWeight: "600",
-    borderRadius: "30px",
-    border: "none",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-    background: isActive ? colors.primary : colors.white,
-    color: isActive ? colors.white : colors.text,
-    boxShadow: isActive ? "0 4px 12px rgba(33, 150, 243, 0.3)" : "0 2px 5px rgba(0,0,0,0.05)"
-  }),
-  card: {
-    background: colors.white,
-    padding: "30px",
-    borderRadius: "16px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
-    marginBottom: "20px"
-  },
-  dropZone: {
-    border: "2px dashed #cbd5e0",
-    borderRadius: "12px",
-    padding: "40px",
-    textAlign: "center",
-    background: "#f8fafc",
-    cursor: "pointer",
-    transition: "border 0.2s"
-  },
-  statGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginTop: "30px" },
-  statCard: { background: "#f8f9fa", padding: "20px", borderRadius: "12px", textAlign: "center", border: "1px solid colors.border" },
-  splitView: { display: "flex", gap: "30px", marginTop: "20px" },
-  column: {
-    flex: 1,
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "20px",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
-    border: "1px solid #f0f0f0"
-  },
-  badge: (bg) => ({
-    display: "inline-block",
-    padding: "6px 12px",
-    borderRadius: "20px",
-    background: bg,
-    color: "white",
-    fontSize: "0.85rem",
-    fontWeight: "bold",
-    marginBottom: "15px",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px"
-  }),
-  resultItem: {
-    padding: "15px",
-    marginBottom: "15px",
-    borderRadius: "8px",
-    background: "#fdfdfd",
-    borderLeft: "4px solid #ddd",
-    border: "1px solid #eee",
-    borderLeftWidth: "4px",
-    transition: "transform 0.1s"
-  },
-  input: {
-    width: "100%",
-    padding: "16px",
-    fontSize: "1.1rem",
-    borderRadius: "12px",
-    border: "2px solid #e0e0e0",
-    outline: "none",
-    transition: "border-color 0.2s",
-    boxSizing: "border-box"
-  },
-  button: {
-    marginTop: "20px",
-    padding: "14px 28px",
-    fontSize: "1rem",
-    background: colors.primary,
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    width: "100%"
-  },
-  fileIcon: { marginRight: "8px", fontSize: "1.2em" },
-  sourceText: { fontSize: "0.9rem", fontWeight: "700", color: "#555", marginBottom: "6px", display: "flex", alignItems: "center" }
-};
+const shell = { maxWidth: 1500, margin: "0 auto", padding: "36px 22px 60px", fontFamily: "Inter, Segoe UI, sans-serif", color: palette.ink };
+const card = { background: "white", border: `1px solid ${palette.border}`, borderRadius: 16, padding: 24, boxShadow: "0 12px 35px rgba(16,24,40,.06)" };
+const button = { border: 0, borderRadius: 10, background: palette.blue, color: "white", padding: "13px 20px", fontWeight: 700, cursor: "pointer" };
 
-// --- COMPONENT: Result Item ---
-// Defined OUTSIDE App to prevent re-renders
-const ResultCard = ({ r, color }) => (
-  <div style={{...styles.resultItem, borderLeftColor: color}}>
-    <div style={styles.sourceText}>
-      <span style={styles.fileIcon}>📄</span> 
-      {r.source}
-    </div>
-    <p style={{margin: "0 0 10px 0", lineHeight: "1.5", fontSize: "0.95rem", color: "#333"}}>
-      {r.text}
-    </p>
-    <div style={{display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#888"}}>
-      <span>Relevance Score: <strong>{r.score.toFixed(4)}</strong></span>
-    </div>
-  </div>
-);
-
-// --- COMPONENT: Ingest Tab ---
-const IngestView = ({ files, setFiles, handleIngest, loadingIngest, ingestStats }) => (
-  <div style={styles.card}>
-    <h2 style={{marginTop:0}}>📂 Upload Documents</h2>
-    <p style={{color: "#666", marginBottom: "20px"}}>
-      Upload PDFs, Text files, or CSVs. We will split them into chunks and vectorise them into both systems.
-    </p>
-    
-    <div style={styles.dropZone}>
-      <input 
-        id="file-upload"
-        name="file-upload"
-        type="file" 
-        multiple 
-        onChange={(e) => setFiles(e.target.files)} 
-        style={{marginBottom: "10px"}}
-      />
-      <label htmlFor="file-upload" style={{display:"block", marginTop: "10px", color: "#666"}}>
-        Selected: {files ? files.length : 0} files
-      </label>
-    </div>
-
-    <button style={styles.button} onClick={handleIngest} disabled={loadingIngest}>
-      {loadingIngest ? "Processing & Vectorizing..." : "Start Ingestion Benchmark"}
-    </button>
-
-    {ingestStats && (
-      <div style={{marginTop: "30px", animation: "fadeIn 0.5s"}}>
-        <h3 style={{textAlign: "center", color: "green"}}>✅ Ingestion Complete</h3>
-        
-        <div style={styles.statGrid}>
-          <div style={styles.statCard}>
-            <div style={{fontSize: "2rem", fontWeight: "bold", color: "#333"}}>
-              {ingestStats.chunks}
-            </div>
-            <div style={{color: "#666"}}>Total Chunks Created</div>
-          </div>
-          
-          <div style={{...styles.statCard, borderTop: `4px solid ${colors.qdrant}`}}>
-            <div style={{fontSize: "1.5rem", fontWeight: "bold", color: colors.qdrant}}>
-              {ingestStats.qdrant_time_ms.toFixed(2)} ms
-            </div>
-            <div style={{color: "#666"}}>Qdrant Write Time</div>
-          </div>
-
-          <div style={{...styles.statCard, borderTop: `4px solid ${colors.elastic}`}}>
-            <div style={{fontSize: "1.5rem", fontWeight: "bold", color: colors.elastic}}>
-              {ingestStats.elastic_time_ms.toFixed(2)} ms
-            </div>
-            <div style={{color: "#666"}}>Elastic Write Time</div>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-);
-
-// --- COMPONENT: Search Tab ---
-const SearchView = ({ query, setQuery, handleSearch, loadingSearch, searchStats }) => (
-  <div>
-    <div style={styles.card}>
-      <form onSubmit={handleSearch}>
-        {/* Added ID and Name to fix accessibility warning */}
-        <input 
-          id="search-input"
-          name="search-query"
-          autoComplete="off"
-          style={styles.input} 
-          value={query} 
-          onChange={e => setQuery(e.target.value)} 
-          placeholder="🔎 Ask a question or search for keywords..." 
-        />
-        <button style={styles.button} disabled={loadingSearch} type="submit">
-          {loadingSearch ? "Running Hybrid Search..." : "Compare Performance"}
-        </button>
-      </form>
-    </div>
-
-    {searchStats && (
-      <div style={styles.splitView}>
-        {/* Qdrant Column */}
-        <div style={styles.column}>
-          <div style={{textAlign: "center", borderBottom: "1px solid #eee", paddingBottom: "15px", marginBottom: "15px"}}>
-            <span style={styles.badge(colors.qdrant)}>Qdrant</span>
-            <div style={{fontSize: "1.2rem", fontWeight: "bold"}}>
-              {searchStats.qdrant_time_ms.toFixed(2)} ms
-            </div>
-          </div>
-          {searchStats.qdrant_results.length === 0 && <p>No results found.</p>}
-          {searchStats.qdrant_results.map((r, i) => (
-            <ResultCard key={i} r={r} color={colors.qdrant} />
-          ))}
-        </div>
-
-        {/* Elastic Column */}
-        <div style={styles.column}>
-          <div style={{textAlign: "center", borderBottom: "1px solid #eee", paddingBottom: "15px", marginBottom: "15px"}}>
-            <span style={styles.badge(colors.elastic)}>Elasticsearch</span>
-            <div style={{fontSize: "1.2rem", fontWeight: "bold"}}>
-              {searchStats.elastic_time_ms.toFixed(2)} ms
-            </div>
-          </div>
-          {searchStats.elastic_results.length === 0 && <p>No results found.</p>}
-          {searchStats.elastic_results.map((r, i) => (
-            <ResultCard key={i} r={r} color={colors.elastic} />
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
-);
-
-function App() {
-  const [activeTab, setActiveTab] = useState("search"); 
-  
-  // Ingest State
-  const [files, setFiles] = useState(null);
-  const [ingestStats, setIngestStats] = useState(null);
-  const [loadingIngest, setLoadingIngest] = useState(false);
-
-  // Search State
-  const [query, setQuery] = useState("");
-  const [searchStats, setSearchStats] = useState(null);
-  const [loadingSearch, setLoadingSearch] = useState(false);
-
-  const handleIngest = async () => {
-    if (!files) return;
-    setLoadingIngest(true);
-    setIngestStats(null);
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) formData.append("files", files[i]);
-
-    try {
-      const res = await axios.post(`${API_URL}/ingest`, formData);
-      setIngestStats(res.data);
-    } catch (err) { alert("Error: " + err.message); }
-    setLoadingIngest(false);
-  };
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!query) return;
-    setLoadingSearch(true);
-    setSearchStats(null);
-    try {
-      const res = await axios.post(`${API_URL}/search`, { query, limit: 5 });
-      setSearchStats(res.data);
-    } catch (err) { alert("Error: " + err.message); }
-    setLoadingSearch(false);
-  };
-
-  return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>⚔️ Vector DB Benchmark</h1>
-        <p style={styles.subtitle}>Hybrid Search Comparison: Qdrant vs Elasticsearch</p>
-      </header>
-
-      <div style={styles.tabContainer}>
-        <button 
-          style={styles.tab(activeTab === "ingest")} 
-          onClick={() => setActiveTab("ingest")}
-        >
-          📂 Data Ingestion
-        </button>
-        <button 
-          style={styles.tab(activeTab === "search")} 
-          onClick={() => setActiveTab("search")}
-        >
-          🔍 Hybrid Search
-        </button>
-      </div>
-
-      <div style={{animation: "fadeIn 0.3s"}}>
-        {activeTab === "ingest" ? (
-          <IngestView 
-            files={files} 
-            setFiles={setFiles} 
-            handleIngest={handleIngest} 
-            loadingIngest={loadingIngest} 
-            ingestStats={ingestStats} 
-          />
-        ) : (
-          <SearchView 
-            query={query} 
-            setQuery={setQuery} 
-            handleSearch={handleSearch} 
-            loadingSearch={loadingSearch} 
-            searchStats={searchStats} 
-          />
-        )}
-      </div>
-      
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
-    </div>
-  );
+function ResultCard({ item, color }) {
+  const exp = item.details?.explanation;
+  return <div style={{ border: `1px solid ${palette.border}`, borderLeft: `4px solid ${color}`, borderRadius: 10, padding: 14, marginBottom: 12 }}>
+    <div style={{ fontSize: 12, color: palette.muted, marginBottom: 6 }}>{item.source || "unknown source"}</div>
+    <div style={{ lineHeight: 1.45 }}>{item.text}</div>
+    <div style={{ marginTop: 9, fontSize: 12, color: palette.muted }}>score <b>{Number(item.score).toFixed(4)}</b></div>
+    {exp && <div style={{ marginTop: 8, fontSize: 11, color: palette.muted }}>
+      route <b>{exp.route}</b> · L/S/D {exp.weights.lexical.toFixed(2)}/{exp.weights.sparse.toFixed(2)}/{exp.weights.dense.toFixed(2)}
+      {exp.reranked ? ` · reranked (${exp.reranker})` : ""}
+    </div>}
+  </div>;
 }
 
-export default App;
+function EngineColumn({ title, color, time, results, meta }) {
+  return <section style={card}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+      <div><div style={{ fontWeight: 800, color }}>{title}</div>{meta && <div style={{ fontSize: 12, color: palette.muted }}>{meta}</div>}</div>
+      <div style={{ fontSize: 20, fontWeight: 800 }}>{Number(time || 0).toFixed(2)} <span style={{ fontSize: 11, color: palette.muted }}>ms</span></div>
+    </div>
+    {results?.length ? results.map((r, i) => <ResultCard key={`${title}-${i}`} item={r} color={color} />) : <div style={{ color: palette.muted }}>No results</div>}
+  </section>;
+}
+
+export default function App() {
+  const [tab, setTab] = useState("search");
+  const [files, setFiles] = useState(null);
+  const [query, setQuery] = useState("");
+  const [mode, setMode] = useState("auto");
+  const [ingest, setIngest] = useState(null);
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function ingestFiles() {
+    if (!files?.length) return;
+    setBusy(true); setIngest(null);
+    try {
+      const data = new FormData();
+      [...files].forEach(file => data.append("files", file));
+      setIngest((await axios.post(`${API_URL}/ingest`, data)).data);
+    } catch (error) { alert(error.message); }
+    finally { setBusy(false); }
+  }
+
+  async function runSearch(event) {
+    event.preventDefault();
+    if (!query.trim()) return;
+    setBusy(true); setResult(null);
+    try { setResult((await axios.post(`${API_URL}/search`, { query, limit: 5, queryweave_mode: mode })).data); }
+    catch (error) { alert(error.message); }
+    finally { setBusy(false); }
+  }
+
+  return <main style={{ background: palette.bg, minHeight: "100vh" }}><div style={shell}>
+    <header style={{ marginBottom: 26 }}>
+      <div style={{ color: palette.queryweave, fontWeight: 800, letterSpacing: 1, fontSize: 13 }}>HYBRID SEARCH LAB</div>
+      <h1 style={{ fontSize: 38, margin: "7px 0 8px" }}>One corpus. One embedding stack. Three search engines.</h1>
+      <p style={{ color: palette.muted, maxWidth: 850, margin: 0 }}>Qdrant RRF vs Elasticsearch hybrid retrieval vs QueryWeave adaptive query fusion, using the same BGE dense and SPLADE sparse vectors.</p>
+    </header>
+
+    <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+      {["search", "ingest"].map(x => <button key={x} onClick={() => setTab(x)} style={{ ...button, background: tab === x ? palette.ink : "white", color: tab === x ? "white" : palette.ink, border: `1px solid ${palette.border}` }}>{x === "search" ? "Search benchmark" : "Data ingestion"}</button>)}
+    </div>
+
+    {tab === "ingest" ? <section style={card}>
+      <h2>Index the same chunks in all engines</h2>
+      <p style={{ color: palette.muted }}>Parsing and embedding happen once. Only backend write time is compared.</p>
+      <input type="file" multiple onChange={e => setFiles(e.target.files)} />
+      <button style={{ ...button, marginLeft: 14 }} disabled={busy} onClick={ingestFiles}>{busy ? "Processing…" : "Ingest & compare"}</button>
+      {ingest && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginTop: 24 }}>
+        {[["chunks", ingest.chunks], ["embedding", `${ingest.embedding_time_ms.toFixed(1)} ms`], ["Qdrant", `${ingest.qdrant_time_ms.toFixed(1)} ms`], ["Elasticsearch", `${ingest.elastic_time_ms.toFixed(1)} ms`], ["QueryWeave", `${ingest.queryweave_time_ms.toFixed(1)} ms`]].map(([k,v]) => <div key={k} style={{ padding: 16, background: palette.bg, borderRadius: 10 }}><b>{v}</b><div style={{ color: palette.muted, fontSize: 12 }}>{k}</div></div>)}
+      </div>}
+    </section> : <>
+      <form onSubmit={runSearch} style={{ ...card, marginBottom: 18, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10 }}>
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search exact identifiers or semantic questions…" style={{ padding: 14, border: `1px solid ${palette.border}`, borderRadius: 10, fontSize: 16 }} />
+        <select value={mode} onChange={e => setMode(e.target.value)} style={{ padding: "0 14px", border: `1px solid ${palette.border}`, borderRadius: 10 }}>
+          <option value="auto">QueryWeave: auto</option><option value="lexical">lexical</option><option value="hybrid">hybrid</option><option value="deep">deep</option>
+        </select>
+        <button style={button} disabled={busy}>{busy ? "Searching…" : "Compare"}</button>
+      </form>
+      {result && <>
+        <div style={{ margin: "0 0 14px", color: palette.muted, fontSize: 13 }}>Shared query embedding: <b>{result.embedding_time_ms.toFixed(2)} ms</b> · QueryWeave route: <b>{result.queryweave_meta.route}</b></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 16 }}>
+          <EngineColumn title="Qdrant" color={palette.qdrant} time={result.qdrant_time_ms} results={result.qdrant_results} meta="Dense + SPLADE · RRF" />
+          <EngineColumn title="Elasticsearch" color={palette.elastic} time={result.elastic_time_ms} results={result.elastic_results} meta="BM25 + dense kNN" />
+          <EngineColumn title="QueryWeave" color={palette.queryweave} time={result.queryweave_time_ms} results={result.queryweave_results} meta={`AQF · ${result.queryweave_meta.route}`} />
+        </div>
+      </>}
+    </>}
+  </div></main>;
+}

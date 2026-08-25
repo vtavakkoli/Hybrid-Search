@@ -1,5 +1,4 @@
 services:
-  # --- 1. Qdrant (Ext: 4633) ---
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant_db
@@ -8,7 +7,6 @@ services:
     volumes:
       - ./qdrant_data:/qdrant/storage
 
-  # --- 2. Elastic (Ext: 4920) ---
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
     container_name: elastic_db
@@ -21,7 +19,17 @@ services:
     volumes:
       - ./es_data:/usr/share/elasticsearch/data
 
-  # --- 3. Backend (Ext: 4800) ---
+  queryweave:
+    build:
+      context: https://github.com/vtavakkoli/QueryWeave.git#feature/queryweave-engine-v1
+    container_name: queryweave_engine
+    ports:
+      - "4777:7777"
+    environment:
+      - QUERYWEAVE_ADDR=0.0.0.0:7777
+      - QUERYWEAVE_LEXICAL_BACKEND=tantivy
+      - QUERYWEAVE_VECTOR_BACKEND=hnsw-f32
+
   backend:
     build: ./backend
     container_name: hybrid_backend
@@ -30,15 +38,16 @@ services:
     depends_on:
       - qdrant
       - elasticsearch
+      - queryweave
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - ELASTIC_HOST=elasticsearch
       - ELASTIC_PORT=9200
+      - QUERYWEAVE_URL=http://queryweave:7777
     volumes:
       - ./models_cache:/app/models_cache
 
-  # --- 4. Frontend (Ext: 4300) ---
   frontend:
     build: ./frontend
     container_name: hybrid_frontend
