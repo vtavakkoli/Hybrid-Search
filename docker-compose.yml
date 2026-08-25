@@ -27,6 +27,8 @@ services:
       - "4777:7777"
     environment:
       - QUERYWEAVE_ADDR=0.0.0.0:7777
+      - QUERYWEAVE_LEXICAL_BACKEND=tantivy
+      - QUERYWEAVE_VECTOR_BACKEND=hnsw-f32
 
   backend:
     build: ./backend
