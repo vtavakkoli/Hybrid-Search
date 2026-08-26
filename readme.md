@@ -29,7 +29,7 @@ Embedding time is reported separately.
 
 ## QueryWeave integration
 
-The Compose stack builds QueryWeave from its implementation branch and exposes it internally at `http://queryweave:7777`. Hybrid-Search reuses the existing FastEmbed models:
+The Compose stack builds QueryWeave from `QueryWeave/main` and exposes it internally at `http://queryweave:7777`. Hybrid-Search reuses the existing FastEmbed models:
 
 - dense: `BAAI/bge-small-en-v1.5`;
 - sparse: `prithivida/Splade_PP_en_v1`.
@@ -38,9 +38,34 @@ Documents are sent to QueryWeave with both vectors, so its adaptive fusion logic
 
 ## Start
 
+### Linux / macOS / WSL
+
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
+
+### Windows PowerShell
+
+Some Docker Desktop/Compose versions can fail immediately at `load local bake definitions` with `failed to execute bake: exit status 1` when Compose delegates the build to Buildx Bake. Use the repository launcher, which disables Bake delegation for this local stack:
+
+```powershell
+.\scripts\up.ps1
+```
+
+For a clean rebuild:
+
+```powershell
+.\scripts\up.ps1 -NoCache
+```
+
+Equivalent manual command:
+
+```powershell
+$env:COMPOSE_BAKE="false"
+docker compose up --build -d
+```
+
+Prefer the current `docker compose` CLI syntax over the legacy `docker-compose` command.
 
 Open:
 
